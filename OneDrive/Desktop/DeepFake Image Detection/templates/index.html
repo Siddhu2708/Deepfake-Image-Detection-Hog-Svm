@@ -1,0 +1,256 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepFake Image Detection</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="page-container">
+
+        <header class="top-header">
+            <div class="logo">
+                <div class="logo-icon">DF</div>
+                <span>DeepFake Detector</span>
+            </div>
+            <span class="status">
+                <span class="status-dot"></span>
+                Detection System
+            </span>
+        </header>
+
+        <main>
+            <section class="hero">
+                <div class="eyebrow">IMAGE AUTHENTICITY CHECK</div>
+
+                <h1>DeepFake Image Detection</h1>
+
+                <p>
+                    Upload an image to analyze its visual features
+                    and check whether it is classified as Real or Fake.
+                </p>
+            </section>
+
+            {% if model_error %}
+            <div class="message error-message">
+                {{ model_error }}
+            </div>
+            {% endif %}
+
+            {% if error %}
+            <div class="message error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <section class="main-grid">
+
+                <div class="panel upload-panel">
+                    <div class="section-heading">
+                        <div>
+                            <span class="step-label">STEP 01</span>
+                            <h2>Upload Image</h2>
+                        </div>
+                        <span class="heading-icon">↑</span>
+                    </div>
+
+                    <form action="{{ url_for('predict') }}"
+                          method="POST"
+                          enctype="multipart/form-data"
+                          id="uploadForm">
+
+                        <label for="imageInput" class="upload-box">
+                            <div class="upload-icon">↑</div>
+                            <h3>Choose an image</h3>
+                            <p>Click here to browse your files</p>
+                            <span class="file-types">
+                                JPG · JPEG · PNG · WEBP
+                            </span>
+                        </label>
+
+                        <input type="file"
+                               id="imageInput"
+                               name="image"
+                               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                               required>
+
+                        <div id="fileInfo" class="file-info">
+                            No image selected
+                        </div>
+
+                        <button type="submit"
+                                class="primary-button"
+                                id="analyzeButton">
+                            Analyze Image
+                            <span>→</span>
+                        </button>
+
+                        <p class="privacy-note">
+                            Supported formats: JPG, JPEG, PNG and WEBP.
+                        </p>
+                    </form>
+                </div>
+
+                <div class="panel preview-panel">
+                    <div class="section-heading">
+                        <div>
+                            <span class="step-label">STEP 02</span>
+                            <h2>Image Preview</h2>
+                        </div>
+                        <span class="preview-tag">PREVIEW</span>
+                    </div>
+
+                    <div class="preview-box">
+                        {% if image_path %}
+                            <img src="{{ image_path }}"
+                                 alt="Uploaded image preview"
+                                 class="preview-image">
+                        {% else %}
+                            <div class="empty-preview">
+                                <div class="image-placeholder">▧</div>
+                                <h3>Your image will appear here</h3>
+                                <p>Select an image to preview it.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </section>
+
+            {% if result %}
+            <section class="panel result-panel">
+                <div class="section-heading">
+                    <div>
+                        <span class="step-label">STEP 03</span>
+                        <h2>Detection Result</h2>
+                    </div>
+                    <span class="result-badge">{{ result }}</span>
+                </div>
+
+                <div class="result-content">
+                    <div class="result-summary">
+                        <h3>Analysis Complete</h3>
+                        <p>
+                            The uploaded image has been analyzed
+                            by the detection model.
+                        </p>
+
+                        {% if description %}
+                        <p>{{ description }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="probability-grid">
+                        <div class="probability-card real-card">
+                            <span>Real Probability</span>
+                            <strong>{{ real_probability }}%</strong>
+                            <div class="progress-track">
+                                <div class="progress-fill real-fill"
+                                     style="width: {{ real_probability }}%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="probability-card fake-card">
+                            <span>Fake Probability</span>
+                            <strong>{{ fake_probability }}%</strong>
+                            <div class="progress-track">
+                                <div class="progress-fill fake-fill"
+                                     style="width: {{ fake_probability }}%">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if report_available and report_filename %}
+                <a class="primary-button report-button"
+                   href="{{ url_for('download_report',
+                                    report_filename=report_filename) }}">
+                    Download PDF Report
+                    <span>↓</span>
+                </a>
+                {% endif %}
+            </section>
+
+            {% if details %}
+            <section class="panel details-panel">
+                <div class="section-heading">
+                    <div>
+                        <span class="step-label">IMAGE INFORMATION</span>
+                        <h2>Image Details</h2>
+                    </div>
+                </div>
+
+                <div class="details-grid">
+                    {% for key, value in details.items() %}
+                    <div class="detail-item">
+                        <span>{{ key.replace('_', ' ')|title }}</span>
+                        <strong>{{ value }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+            {% endif %}
+
+        </main>
+
+        <footer>
+            <p>DeepFake Image Detection System</p>
+            <span>Machine Learning Project</span>
+        </footer>
+
+    </div>
+
+    <script>
+        const imageInput = document.getElementById("imageInput");
+        const fileInfo = document.getElementById("fileInfo");
+        const uploadForm = document.getElementById("uploadForm");
+        const analyzeButton = document.getElementById("analyzeButton");
+
+        imageInput.addEventListener("change", function () {
+            const file = this.files[0];
+
+            if (!file) {
+                fileInfo.textContent = "No image selected";
+                return;
+            }
+
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+            ];
+
+            if (!allowedTypes.includes(file.type)) {
+                alert("Please select a JPG, JPEG, PNG or WEBP image.");
+                this.value = "";
+                fileInfo.textContent = "No image selected";
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert("Image size must be less than 10 MB.");
+                this.value = "";
+                fileInfo.textContent = "No image selected";
+                return;
+            }
+
+            fileInfo.textContent =
+                file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
+        });
+
+        uploadForm.addEventListener("submit", function () {
+            if (imageInput.files.length > 0) {
+                analyzeButton.disabled = true;
+                analyzeButton.innerHTML = "Analyzing Image...";
+            }
+        });
+    </script>
+</body>
+</html>
