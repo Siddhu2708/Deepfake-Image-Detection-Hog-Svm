@@ -9,3 +9,4 @@ scikit-learn==1.9.1
 scikit-image==0.26.0
 scipy==1.15.3
 Werkzeug==3.1.2
+gunicorn
